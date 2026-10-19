@@ -22,10 +22,32 @@ export function NeisExport({ onClose }: { onClose: () => void }) {
     [state.students, state.records, holidays, from, to],
   );
 
+  const baseName = `attendance_neis_${file.from.replace(/-/g, '')}-${file.to.replace(/-/g, '')}`;
+  const markExported = () => update((s) => ({ ...s, settings: { ...s.settings, lastNeisExportTo: file.to } }));
+  const [shareMsg, setShareMsg] = useState('');
+
   const save = () => {
     const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' });
-    downloadBlob(blob, `attendance_neis_${file.from.replace(/-/g, '')}-${file.to.replace(/-/g, '')}.json`);
-    update((s) => ({ ...s, settings: { ...s.settings, lastNeisExportTo: file.to } }));
+    downloadBlob(blob, `${baseName}.json`);
+    markExported();
+  };
+
+  // 휴대폰: 공유 창으로 구글 드라이브에 보낸다. 안드로이드 크롬은 .json 공유를 막아서 내용은 같고 확장자만 .txt 로 보낸다.
+  const shareFile = useMemo(
+    () => new File([JSON.stringify(file, null, 2)], `${baseName}.txt`, { type: 'text/plain' }),
+    [file, baseName],
+  );
+  const canShare = typeof navigator !== 'undefined' && !!navigator.canShare?.({ files: [shareFile] });
+
+  const share = async () => {
+    try {
+      await navigator.share({ files: [shareFile], title: '나이스 입력 파일' });
+      markExported();
+      setShareMsg('보냈어요. 학교 PC 크롬에서 구글 드라이브를 열고 이 파일을 다운로드하세요.');
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return; // 선생님이 취소함
+      setShareMsg('보내지 못했어요. 「파일 저장」으로 저장한 뒤 드라이브 앱에서 올려 주세요.');
+    }
   };
 
   return (
@@ -73,15 +95,32 @@ export function NeisExport({ onClose }: { onClose: () => void }) {
         )}
 
         <p className="hint">
-          저장한 뒤 키트 폴더의 클로드 앱에 <b>"앱 출결 나이스에 넣어줘"</b> 라고 하세요. 학생 번호·이름이 나이스와 똑같아야
-          들어가요. 다 넣은 뒤에는 파일을 지워 주세요 (학생 이름과 출결이 들어 있어요).
+          {canShare ? (
+            <>
+              휴대폰에서는 <b>드라이브로 보내기</b> → 학교 PC 크롬에서 구글 드라이브를 열어 다운로드하면, 예약해 둔 시각에 자동으로
+              나이스에 들어가요.
+            </>
+          ) : (
+            <>
+              저장한 뒤 키트 폴더의 클로드 앱에 <b>"앱 출결 나이스에 넣어줘"</b> 라고 하세요 (예약해 두었다면 그 시각에 자동으로
+              들어가요).
+            </>
+          )}{' '}
+          학생 번호·이름이 나이스와 똑같아야 들어가요. 파일에는 학생 이름과 출결이 들어 있으니 다 넣은 뒤에는 드라이브에서도 지워
+          주세요.
         </p>
+        {shareMsg && <p className="info">{shareMsg}</p>}
 
         <footer className="form-actions">
           <span className="spacer" />
           <button onClick={onClose}>닫기</button>
-          <button className="primary big" disabled={file.records.length === 0} onClick={save}>
-            파일 저장
+          {canShare && (
+            <button disabled={file.records.length === 0} onClick={save}>
+              파일 저장
+            </button>
+          )}
+          <button className="primary big" disabled={file.records.length === 0} onClick={canShare ? share : save}>
+            {canShare ? '드라이브로 보내기' : '파일 저장'}
           </button>
         </footer>
       </div>
