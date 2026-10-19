@@ -24,7 +24,9 @@ import {
 } from '../domain/types';
 import { newId, useStore } from '../store';
 import { dayStatus, kindClass, KIND_SHORT, KindGuide, Modal, PeriodPicker, recordDates, sortStudents, studentLabel } from './common';
+import { loadJobs, loadSyncConfig, type SyncJob } from '../sync/neisSync';
 import { FieldTripIntake } from './FieldTripIntake';
+import { SyncJobStatus } from './SyncJobStatus';
 import { Icon } from './icons';
 import { NeisExport } from './NeisExport';
 import { clean, RecordForm } from './RecordForm';
@@ -52,6 +54,11 @@ export function Today() {
   const [entryFor, setEntryFor] = useState<string | null>(null);
   const [intake, setIntake] = useState(false);
   const [neis, setNeis] = useState(false);
+  // 오늘 보냈거나 아직 기다리는 연동 건 하나를 보여준다
+  const [lastJob, setLastJob] = useState<SyncJob | null>(() => {
+    const j = loadJobs()[0];
+    return j && (j.status === 'pending' || new Date(j.sentAt).toDateString() === new Date().toDateString()) ? j : null;
+  });
   const now = today();
   const holiday = holidays.get(date);
   const { main, weekday } = bigDate(date);
@@ -120,16 +127,17 @@ export function Today() {
               </button>
               <button className="tile-btn" onClick={() => setNeis(true)}>
                 <Icon name="upload" size={20} />
-                나이스 파일
+                {loadSyncConfig() ? '나이스 반영' : '나이스 파일'}
               </button>
             </div>
+            {lastJob && <SyncJobStatus job={lastJob} />}
             <PendingDocs />
           </aside>
         </div>
       )}
 
       {intake && <FieldTripIntake onClose={() => setIntake(false)} />}
-      {neis && <NeisExport onClose={() => setNeis(false)} />}
+      {neis && <NeisExport onClose={() => setNeis(false)} onSent={setLastJob} />}
       {entryFor && <QuickEntry studentId={entryFor} date={date} onClose={() => setEntryFor(null)} />}
     </div>
   );

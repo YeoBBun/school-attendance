@@ -383,3 +383,11 @@ button.del-btn:hover { border-color: var(--danger); }
 @media (max-width: 640px) {
   .toast { bottom: 88px; }
 }
+
+/* ───────── 나이스 자동 연동 ───────── */
+.sync-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px 14px; margin: 8px 0 12px; }
+.sync-form label { display: grid; }
+.sync-form input { width: 100%; }
+.sync-status { margin: 0; font-size: 14px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); }
+.sync-status.done { color: var(--ok, #1f8a4c); }
+.sync-status.check, .sync-status.error { color: var(--danger); }

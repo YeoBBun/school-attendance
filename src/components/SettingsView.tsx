@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { SyncSettings } from './SyncSettings';
 import { formatKo, indexHolidays } from '../domain/calendar';
 import { rebuildDocs } from '../domain/rules';
 import { mergePublicHolidays } from '../domain/publicHolidays';
@@ -36,6 +37,7 @@ export function SettingsView() {
       <HolidaySettings />
       <ExamSettings />
       <RuleSettings />
+      <SyncSettings />
       {!needBackup && <BackupSettings />}
     </div>
   );
