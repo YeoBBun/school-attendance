@@ -3,6 +3,8 @@ import { indexHolidays, today, type HolidayIndex } from './domain/calendar';
 import { computeWarnings, type DocContext } from './domain/rules';
 import type { AppState, AttendanceRecord } from './domain/types';
 import { loadState, requestPersistence, saveState } from './storage/db';
+import { loadSyncConfig, syncNow } from './sync/cloud';
+import { mergeStates, stamp } from './sync/merge';
 
 interface Store {
   state: AppState;
@@ -15,7 +17,20 @@ interface Store {
   saveError: string | null;
   /** 기록을 바로 지우고, 잠깐 동안 '되돌리기'를 보여준다. label 은 안내에 쓰는 설명 */
   removeRecord: (id: string, label: string) => void;
+  /** 휴대폰 ↔ PC 동기화 상태 */
+  sync: SyncStatus;
+  /** 지금 바로 맞추기 (설정을 바꾼 뒤 등) */
+  syncNow: () => void;
 }
+
+export type SyncStatus =
+  | { kind: 'off' }
+  | { kind: 'syncing'; at?: string }
+  | { kind: 'ok'; at: string }
+  | { kind: 'error'; message: string; at?: string };
+
+const SYNC_DEBOUNCE_MS = 4000;
+const SYNC_INTERVAL_MS = 60_000;
 
 interface Undo {
   record: AttendanceRecord;
@@ -35,24 +50,92 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const stateRef = useRef<AppState | null>(null);
   stateRef.current = state;
   const [undo, setUndo] = useState<Undo | null>(null);
+  // 이 기기에서 고친 횟수 — 바뀔 때마다 잠시 뒤 동기화한다 (다른 기기에서 받은 변경은 세지 않는다)
+  const [localEdits, setLocalEdits] = useState(0);
 
-  const removeRecord = useCallback((id: string, label: string) => {
-    const s = stateRef.current;
-    const index = s?.records.findIndex((r) => r.id === id) ?? -1;
-    if (!s || index < 0) return;
-    setState({ ...s, records: s.records.filter((r) => r.id !== id) });
-    setUndo({ record: s.records[index], index, label });
+  /** 이 기기에서 고친 것: 바뀐 항목에 시각을 찍고, 지운 항목을 남긴다 (동기화용). */
+  const commit = useCallback((fn: (s: AppState) => AppState) => {
+    setState((s) => (s ? stamp(s, fn(s)) : s));
+    setLocalEdits((n) => n + 1);
   }, []);
+
+  const removeRecord = useCallback(
+    (id: string, label: string) => {
+      const s = stateRef.current;
+      const index = s?.records.findIndex((r) => r.id === id) ?? -1;
+      if (!s || index < 0) return;
+      commit((cur) => ({ ...cur, records: cur.records.filter((r) => r.id !== id) }));
+      setUndo({ record: s.records[index], index, label });
+    },
+    [commit],
+  );
 
   const restore = () => {
     if (!undo) return;
-    setState((s) =>
-      s && !s.records.some((r) => r.id === undo.record.id)
+    commit((s) =>
+      !s.records.some((r) => r.id === undo.record.id)
         ? { ...s, records: [...s.records.slice(0, undo.index), undo.record, ...s.records.slice(undo.index)] }
         : s,
     );
     setUndo(null);
   };
+
+  // ─── 휴대폰 ↔ PC 동기화 ───
+  const [sync, setSync] = useState<SyncStatus>(() => (loadSyncConfig() ? { kind: 'syncing' } : { kind: 'off' }));
+  const syncing = useRef(false);
+  const again = useRef(false);
+
+  const runSync = useCallback(async () => {
+    const cfg = loadSyncConfig();
+    if (!cfg) return setSync({ kind: 'off' });
+    if (syncing.current) {
+      again.current = true;
+      return;
+    }
+    const base = stateRef.current;
+    if (!base) return;
+    syncing.current = true;
+    setSync((s) => ({ kind: 'syncing', at: 'at' in s ? s.at : undefined }));
+    try {
+      const merged = await syncNow(cfg, base);
+      if (merged !== base) {
+        // 받는 동안 이 기기에서 또 고쳤으면 그것까지 합치고 다시 올린다
+        setState((cur) => (!cur || cur === base ? merged : mergeStates(cur, merged)));
+      }
+      if (stateRef.current !== base) again.current = true;
+      setSync({ kind: 'ok', at: new Date().toISOString() });
+    } catch (e) {
+      setSync((s) => ({ kind: 'error', message: e instanceof Error ? e.message : String(e), at: 'at' in s ? s.at : undefined }));
+    } finally {
+      syncing.current = false;
+      if (again.current) {
+        again.current = false;
+        setTimeout(() => void runSync(), 500);
+      }
+    }
+  }, []);
+
+  // 이 기기에서 고치면 잠시 뒤 올린다
+  useEffect(() => {
+    if (!localEdits) return;
+    const t = setTimeout(() => void runSync(), SYNC_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [localEdits, runSync]);
+
+  // 앱을 열 때, 다시 볼 때, 켜 둔 동안 1분마다 받는다
+  useEffect(() => {
+    if (!state) return;
+    void runSync();
+    const onVisible = () => document.visibilityState === 'visible' && void runSync();
+    document.addEventListener('visibilitychange', onVisible);
+    const t = setInterval(() => document.visibilityState === 'visible' && void runSync(), SYNC_INTERVAL_MS);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      clearInterval(t);
+    };
+    // 처음 불러온 뒤 한 번만 건다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!state, runSync]);
 
   useEffect(() => {
     if (!undo) return;
@@ -77,8 +160,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       .catch((e) => setSaveError(`저장 실패: ${e}`));
   }, [state]);
 
-  const update = useCallback((fn: (s: AppState) => AppState) => setState((s) => (s ? fn(s) : s)), []);
-  const replace = useCallback((s: AppState) => setState(s), []);
+  const update = commit;
+  // 백업 불러오기·전체 삭제: 통째로 바꾼다. 다른 기기에도 그대로 퍼진다 (없어진 항목은 지운 것으로).
+  const replace = useCallback((next: AppState) => commit(() => next), [commit]);
 
   const holidays = useMemo(() => indexHolidays(state?.holidays ?? []), [state?.holidays]);
   const docContext = useMemo(
@@ -97,7 +181,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   if (!state) return <div className="fatal">불러오는 중…</div>;
 
   return (
-    <StoreContext.Provider value={{ state, update, replace, holidays, docContext, warnings, saveError, removeRecord }}>
+    <StoreContext.Provider value={{ state, update, replace, holidays, docContext, warnings, saveError, removeRecord, sync, syncNow: () => void runSync() }}>
       {children}
       {undo && (
         <div className="toast" role="status">

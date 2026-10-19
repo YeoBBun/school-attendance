@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { loadSyncConfig, saveSyncConfig, testConnection, type SyncConfig } from '../sync/neisSync';
+import { useStore } from '../store';
+import { loadSyncConfig, saveSyncConfig, testConnection, type SyncConfig } from '../sync/cloud';
 
 const DEFAULT_REPO = 'YeoBBun/school-attendance-sync';
 
 /**
- * 나이스 자동 연동 설정 (휴대폰 → 학교 PC).
+ * 휴대폰 ↔ PC 동기화 설정.
  * 토큰·잠금 비밀번호는 이 기기에만 저장하고 백업 파일에 넣지 않는다.
  */
 export function SyncSettings() {
+  const { sync, syncNow } = useStore();
   const saved = loadSyncConfig();
   const [repo, setRepo] = useState(saved?.repo ?? DEFAULT_REPO);
   const [token, setToken] = useState(saved?.token ?? '');
@@ -26,25 +28,28 @@ export function SyncSettings() {
     setBusy(false);
     if (problem) return setMsg({ ok: false, text: problem });
     saveSyncConfig(cfg);
-    setMsg({ ok: true, text: '연결됐어요. 학교 PC 키트에도 같은 저장소·토큰·잠금 비밀번호를 넣어 주세요.' });
+    setMsg({ ok: true, text: '연결됐어요. 다른 기기에서도 같은 저장소와 잠금 비밀번호로 연결하면 출결이 서로 맞춰져요.' });
+    syncNow();
   };
 
   const off = () => {
-    if (!confirm('이 기기의 나이스 연동 설정을 지울까요?')) return;
+    if (!confirm('이 기기의 동기화 설정을 지울까요? (출결 데이터는 지워지지 않아요)')) return;
     saveSyncConfig(null);
     setToken('');
     setPass('');
     setPass2('');
-    setMsg({ ok: true, text: '연동을 껐어요.' });
+    setMsg({ ok: true, text: '동기화를 껐어요. 이 기기의 출결은 그대로 남아요.' });
+    syncNow();
   };
 
   return (
     <section className="card">
-      <h3>나이스 자동 연동 (휴대폰 → 학교 PC)</h3>
+      <h3>휴대폰 ↔ PC 동기화</h3>
       <p className="hint">
-        「나이스 반영」을 누르면 출결을 잠금 비밀번호로 잠가 비공개 깃허브 저장소에 올리고, 학교 PC가 몇 분 안에 나이스에 넣어요. 토큰과
-        비밀번호는 <b>이 기기에만</b> 저장되고 백업 파일에는 들어가지 않아요.
+        휴대폰과 PC에서 같은 저장소·잠금 비밀번호로 연결하면, 어느 쪽에서 입력·수정·삭제해도 다른 쪽에 맞춰져요. 데이터는 잠금 비밀번호로
+        잠가서 비공개 깃허브 저장소에 올려요. 토큰과 비밀번호는 <b>이 기기에만</b> 저장되고 백업 파일에는 들어가지 않아요.
       </p>
+      {saved && <SyncLine status={sync} onRetry={syncNow} />}
       <div className="sync-form">
         <label>
           <span className="field-label">깃허브 저장소</span>
@@ -76,4 +81,24 @@ export function SyncSettings() {
       {msg && <p className={msg.ok ? 'info' : 'error'}>{msg.text}</p>}
     </section>
   );
+}
+
+function hhmm(iso: string) {
+  const d = new Date(iso);
+  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+export function SyncLine({ status, onRetry }: { status: ReturnType<typeof useStore>['sync']; onRetry: () => void }) {
+  if (status.kind === 'off') return null;
+  if (status.kind === 'error')
+    return (
+      <p className="sync-status error">
+        동기화 실패: {status.message}{' '}
+        <button className="link" onClick={onRetry}>
+          다시 시도
+        </button>
+      </p>
+    );
+  if (status.kind === 'syncing') return <p className="sync-status">맞추는 중…</p>;
+  return <p className="sync-status done">✓ {hhmm(status.at)} 동기화됨</p>;
 }

@@ -3,16 +3,14 @@ import { addDays, formatKo, monthKey, today } from '../domain/calendar';
 import { buildNeisFile } from '../domain/neis';
 import { downloadBlob } from '../storage/db';
 import { useStore } from '../store';
-import { loadSyncConfig, sendToNeis, type SyncJob } from '../sync/neisSync';
 import { Modal } from './common';
-import { SyncJobStatus } from './SyncJobStatus';
 
 /**
  * 나이스 자동 입력 키트에 넘길 파일을 만든다.
  * 파일 이름은 영문으로 한다 — 일부 브라우저가 한글 다운로드 이름을 'download' 로 바꿔 버린다.
  * 키트(github.com/YeoBBun/neis-automation-kit)의 app_to_neis.py 가 다운로드 폴더에서 읽어 나이스에 넣는다.
  */
-export function NeisExport({ onClose, onSent }: { onClose: () => void; onSent?: (job: SyncJob) => void }) {
+export function NeisExport({ onClose }: { onClose: () => void }) {
   const { state, update, holidays } = useStore();
   const now = today();
   const last = state.settings.lastNeisExportTo;
@@ -27,28 +25,6 @@ export function NeisExport({ onClose, onSent }: { onClose: () => void; onSent?: 
   const baseName = `attendance_neis_${file.from.replace(/-/g, '')}-${file.to.replace(/-/g, '')}`;
   const markExported = () => update((s) => ({ ...s, settings: { ...s.settings, lastNeisExportTo: file.to } }));
   const [shareMsg, setShareMsg] = useState('');
-  const syncCfg = loadSyncConfig();
-  const [job, setJob] = useState<SyncJob | null>(null);
-  const [sending, setSending] = useState(false);
-  const future = file.records.filter((r) => r.date > now).length;
-
-  // 자동 연동: 잠가서 올리면 학교 PC 가 몇 분 안에 나이스에 넣는다.
-  const sendSync = async () => {
-    if (!syncCfg) return;
-    if (!confirm(`나이스에 ${file.records.length}건을 넣을까요? 학교 PC가 몇 분 안에 넣고, 마감은 선생님이 해요.`)) return;
-    setSending(true);
-    try {
-      const j = await sendToNeis(syncCfg, file);
-      markExported();
-      setJob(j);
-      onSent?.(j);
-    } catch (e) {
-      setShareMsg(e instanceof Error ? e.message : '보내지 못했어요.');
-    } finally {
-      setSending(false);
-    }
-  };
-
   const save = () => {
     const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' });
     downloadBlob(blob, `${baseName}.json`);
@@ -133,31 +109,18 @@ export function NeisExport({ onClose, onSent }: { onClose: () => void; onSent?: 
           주세요.
         </p>
         {shareMsg && <p className="info">{shareMsg}</p>}
-        {syncCfg && future > 0 && <p className="hint">미래 날짜 {future}건은 학교 PC가 넣지 않아요. 그날 다시 보내 주세요.</p>}
-        {job && <SyncJobStatus job={job} />}
 
         <footer className="form-actions">
           <span className="spacer" />
           <button onClick={onClose}>닫기</button>
-          {canShare && !syncCfg && (
+          {canShare && (
             <button disabled={file.records.length === 0} onClick={save}>
               파일 저장
             </button>
           )}
-          {syncCfg ? (
-            <>
-              <button disabled={file.records.length === 0} onClick={canShare ? share : save}>
-                {canShare ? '드라이브로 보내기' : '파일 저장'}
-              </button>
-              <button className="primary big" disabled={file.records.length === 0 || sending || !!job} onClick={sendSync}>
-                {sending ? '보내는 중…' : job ? '보냈어요' : '나이스에 반영'}
-              </button>
-            </>
-          ) : (
-            <button className="primary big" disabled={file.records.length === 0} onClick={canShare ? share : save}>
-              {canShare ? '드라이브로 보내기' : '파일 저장'}
-            </button>
-          )}
+          <button className="primary big" disabled={file.records.length === 0} onClick={canShare ? share : save}>
+            {canShare ? '드라이브로 보내기' : '파일 저장'}
+          </button>
         </footer>
       </div>
     </Modal>

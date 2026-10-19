@@ -24,7 +24,7 @@ function readTab(): TabId {
 }
 
 function Shell() {
-  const { state, saveError } = useStore();
+  const { state, saveError, sync } = useStore();
   const [tab, setTab] = useState<TabId>(readTab);
   const needBackup = useNeedBackup();
 
@@ -45,6 +45,11 @@ function Shell() {
             출결·서류 관리
             {state.settings.className && <span className="class-name">{state.settings.className}</span>}
           </h1>
+          {sync.kind !== 'off' && (
+            <a href="#settings" className={`sync-badge ${sync.kind}`} title={sync.kind === 'error' ? sync.message : '휴대폰 ↔ PC 동기화'}>
+              {sync.kind === 'error' ? '⚠ 동기화 안 됨' : sync.kind === 'syncing' ? '⟳ 맞추는 중' : '✓ 동기화됨'}
+            </a>
+          )}
         </div>
         <nav aria-label="메뉴">
           {TABS.map((t) => (

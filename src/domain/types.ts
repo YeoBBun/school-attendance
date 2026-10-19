@@ -29,7 +29,12 @@ export interface ExamPeriod {
   name: string;
 }
 
-export interface Student {
+/** 기기 간 동기화용: 마지막으로 고친 시각 (ISO). 동기화에서 나중에 고친 쪽을 남긴다. */
+export interface Stamped {
+  updatedAt?: string;
+}
+
+export interface Student extends Stamped {
   id: string;
   number: number;
   name: string;
@@ -37,7 +42,7 @@ export interface Student {
 
 export type HolidayType = '공휴일' | '재량휴업일';
 
-export interface Holiday {
+export interface Holiday extends Stamped {
   date: DateStr;
   name: string;
   type: HolidayType;
@@ -69,7 +74,7 @@ export interface FieldTripInfo {
   endAM?: boolean;
 }
 
-export interface AttendanceRecord {
+export interface AttendanceRecord extends Stamped {
   id: string;
   studentId: string;
   status: Status;
@@ -95,7 +100,7 @@ export interface AttendanceRecord {
 
 export type DeadlineBasis = 'school' | 'calendar';
 
-export interface Settings {
+export interface Settings extends Stamped {
   className: string;
   /** 체험학습 신청서: 실시 N일 전까지 */
   applicationDaysBefore: number;
@@ -115,11 +120,13 @@ export interface Settings {
 }
 
 export interface AppState {
-  version: 4;
+  version: 5;
   students: Student[];
   records: AttendanceRecord[];
   holidays: Holiday[];
   settings: Settings;
+  /** 지운 항목과 지운 시각 (키: 'r:기록id' / 's:학생id' / 'h:날짜'). 다른 기기에도 지운 것이 퍼지게 한다. */
+  tombstones: Record<string, string>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -134,5 +141,5 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 export function emptyState(): AppState {
-  return { version: 4, students: [], records: [], holidays: [...PUBLIC_HOLIDAYS], settings: { ...DEFAULT_SETTINGS } };
+  return { version: 5, students: [], records: [], holidays: [...PUBLIC_HOLIDAYS], settings: { ...DEFAULT_SETTINGS }, tombstones: {} };
 }

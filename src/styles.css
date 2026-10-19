@@ -391,3 +391,5 @@ button.del-btn:hover { border-color: var(--danger); }
 .sync-status { margin: 0; font-size: 14px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); }
 .sync-status.done { color: var(--ok, #1f8a4c); }
 .sync-status.check, .sync-status.error { color: var(--danger); }
+.sync-badge { font-size: 12px; padding: 2px 8px; border-radius: 999px; text-decoration: none; color: var(--muted); background: var(--surface-2); white-space: nowrap; }
+.sync-badge.error { color: var(--danger); }
