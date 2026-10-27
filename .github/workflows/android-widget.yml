@@ -1,7 +1,7 @@
 name: Android widget
 
 # 휴대폰 '받을 서류' 위젯 앱(android-widget/)을 빌드한다.
-# main 에 올라가거나 직접 실행하면 Releases 의 'widget-latest' 에 APK 를 올린다.
+# 기본 브랜치에 올라가거나 직접 실행하면 Releases 의 'widget-latest' 에 APK 를 올린다.
 on:
   push:
     paths:
@@ -50,7 +50,7 @@ jobs:
           path: android-widget/attendance-widget.apk
 
       - name: Releases 에 올리기
-        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        if: github.ref_name == github.event.repository.default_branch || github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
