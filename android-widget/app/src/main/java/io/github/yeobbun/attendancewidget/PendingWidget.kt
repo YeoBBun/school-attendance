@@ -42,6 +42,7 @@ class PendingWidget : AppWidgetProvider() {
             val ids = mgr.getAppWidgetIds(ComponentName(ctx, PendingWidget::class.java))
             if (ids.isEmpty()) return
             render(ctx, mgr, ids, checking)
+            @Suppress("DEPRECATION")
             mgr.notifyAppWidgetViewDataChanged(ids, R.id.list)
         }
 

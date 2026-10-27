@@ -1,11 +1,12 @@
 package io.github.yeobbun.attendancewidget
 
-import com.sun.net.httpserver.HttpServer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.net.InetSocketAddress
+import java.net.InetAddress
+import java.net.ServerSocket
 import java.util.Base64
 
 /** pending-fixture.json 은 출결 앱의 encrypt() 로 '시험용 비밀번호' 를 써서 잠근 것이다. */
@@ -39,26 +40,35 @@ class PendingTest {
 
     @Test
     fun `깃허브에서 받고, sha 가 같으면 건너뛴다`() {
-        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
-        var auth: String? = null
-        server.createContext("/repos/me/sync/contents/sync/pending.json") { ex ->
-            auth = ex.requestHeaders.getFirst("Authorization")
-            // 깃허브는 base64 를 60자마다 줄바꿈해서 준다
-            val b64 = Base64.getMimeEncoder(60, "\n".toByteArray()).encodeToString(fixture.toByteArray())
-            val body = """{"sha":"abc","content":"${b64.replace("\n", "\\n")}"}""".toByteArray()
-            ex.sendResponseHeaders(200, body.size.toLong())
-            ex.responseBody.use { it.write(body) }
-        }
-        server.start()
+        // 깃허브는 base64 를 60자마다 줄바꿈해서 준다
+        val b64 = Base64.getMimeEncoder(60, "\n".toByteArray()).encodeToString(fixture.toByteArray())
+        val body = """{"sha":"abc","content":"${b64.replace("\n", "\\n")}"}""".toByteArray()
+        val requests = mutableListOf<List<String>>()
+        // 안드로이드 단위 시험에는 com.sun.net.httpserver 가 없어 소켓으로 직접 답한다
+        val server = ServerSocket(0, 0, InetAddress.getLoopbackAddress())
+        val thread = Thread {
+            repeat(2) {
+                server.accept().use { sock ->
+                    val reader = sock.getInputStream().bufferedReader()
+                    requests += generateSequence { reader.readLine()?.takeIf { it.isNotEmpty() } }.toList()
+                    val out = sock.getOutputStream()
+                    out.write("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ${body.size}\r\nConnection: close\r\n\r\n".toByteArray())
+                    out.write(body)
+                    out.flush()
+                }
+            }
+        }.apply { start() }
         try {
-            GitHub.api = "http://127.0.0.1:${server.address.port}"
+            GitHub.api = "http://127.0.0.1:${server.localPort}"
             val f = GitHub.fetchPending("me/sync", "tok", null)!!
-            assertEquals("Bearer tok", auth)
+            assertEquals("GET /repos/me/sync/contents/sync/pending.json HTTP/1.1", requests[0][0])
+            assertTrue(requests[0].contains("Authorization: Bearer tok"))
             assertEquals("abc", f.sha)
             assertEquals(fixture, f.text)
             assertNull(GitHub.fetchPending("me/sync", "tok", "abc"))
         } finally {
-            server.stop(0)
+            thread.join(5_000)
+            server.close()
         }
     }
 }
