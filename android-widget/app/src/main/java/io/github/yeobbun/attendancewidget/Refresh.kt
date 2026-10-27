@@ -58,6 +58,12 @@ object Refresh {
         WorkManager.getInstance(ctx).enqueueUniqueWork(NOW, ExistingWorkPolicy.REPLACE, OneTimeWorkRequestBuilder<Worker>().build())
     }
 
+    /** 몇 초 뒤에 한 번 (출결 앱이 요약을 올릴 시간을 두고) */
+    fun later(ctx: Context, seconds: Long) {
+        val req = OneTimeWorkRequestBuilder<Worker>().setInitialDelay(seconds, TimeUnit.SECONDS).build()
+        WorkManager.getInstance(ctx).enqueueUniqueWork(NOW, ExistingWorkPolicy.REPLACE, req)
+    }
+
     fun cancel(ctx: Context) {
         WorkManager.getInstance(ctx).cancelUniqueWork(PERIODIC)
     }

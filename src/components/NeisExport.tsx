@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { addDays, formatKo, monthKey, today } from '../domain/calendar';
 import { buildNeisFile } from '../domain/neis';
+import { androidApp, blobBase64 } from '../platform/android';
 import { downloadBlob } from '../storage/db';
 import { useStore } from '../store';
 import { Modal } from './common';
@@ -36,9 +37,16 @@ export function NeisExport({ onClose }: { onClose: () => void }) {
     () => new File([JSON.stringify(file, null, 2)], `${baseName}.txt`, { type: 'text/plain' }),
     [file, baseName],
   );
-  const canShare = typeof navigator !== 'undefined' && !!navigator.canShare?.({ files: [shareFile] });
+  const canShare = !!androidApp() || (typeof navigator !== 'undefined' && !!navigator.canShare?.({ files: [shareFile] }));
 
   const share = async () => {
+    const app = androidApp();
+    if (app) {
+      app.shareFile(shareFile.name, shareFile.type, await blobBase64(shareFile));
+      markExported();
+      setShareMsg('공유 창에서 드라이브를 고르세요. 학교 PC 크롬에서 구글 드라이브를 열고 이 파일을 다운로드하세요.');
+      return;
+    }
     try {
       await navigator.share({ files: [shareFile], title: '나이스 입력 파일' });
       markExported();

@@ -3,15 +3,6 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- 설치형 출결 앱(웹앱)과 브라우저를 구별하려고 링크를 여는 앱 목록을 본다 -->
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <category android:name="android.intent.category.BROWSABLE" />
-            <data android:scheme="https" />
-        </intent>
-    </queries>
-
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -19,23 +10,28 @@
         android:supportsRtl="false"
         android:theme="@android:style/Theme.Material.Light.DarkActionBar">
 
+        <!-- 앱 아이콘을 누르면 출결 앱. 아이콘을 길게 누르면 '위젯 설정' -->
         <activity
-            android:name=".MainActivity"
+            android:name=".WebAppActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
             android:exported="true"
-            android:label="@string/settings_title"
+            android:launchMode="singleTask"
+            android:theme="@style/AppScreen"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <activity
-            android:name=".OpenAppActivity"
-            android:excludeFromRecents="true"
+            android:name=".MainActivity"
             android:exported="false"
-            android:noHistory="true"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+            android:label="@string/settings_title"
+            android:windowSoftInputMode="adjustResize" />
 
         <receiver
             android:name=".PendingWidget"
@@ -53,5 +49,16 @@
             android:name=".PendingListService"
             android:exported="false"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+        <!-- 나이스 파일을 공유 창으로 보낼 때 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>

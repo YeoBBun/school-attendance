@@ -52,7 +52,7 @@ class PendingWidget : AppWidgetProvider() {
             val count = summary?.items?.size
 
             val openApp = PendingIntent.getActivity(
-                ctx, 0, Intent(ctx, OpenAppActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
+                ctx, 0, Intent(ctx, WebAppActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
             )
             val openSettings = PendingIntent.getActivity(
                 ctx, 1, Intent(ctx, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
@@ -60,9 +60,9 @@ class PendingWidget : AppWidgetProvider() {
             val refresh = PendingIntent.getBroadcast(
                 ctx, 2, Intent(ctx, PendingWidget::class.java).setAction(ACTION_REFRESH), PendingIntent.FLAG_IMMUTABLE,
             )
-            // 목록 줄을 누르면 출결 앱 — 줄마다 붙이는 fillInIntent 와 합쳐지므로 MUTABLE (그래서 이 앱 안 화면을 가리킨다)
+            // 목록 줄을 누르면 출결 앱 — 줄마다 붙이는 fillInIntent 와 합쳐지므로 MUTABLE (안드로이드 14부터는 이 앱 안 화면만 가리킬 수 있다)
             val itemTemplate = PendingIntent.getActivity(
-                ctx, 3, Intent(ctx, OpenAppActivity::class.java), PendingIntent.FLAG_MUTABLE,
+                ctx, 3, Intent(ctx, WebAppActivity::class.java), PendingIntent.FLAG_MUTABLE,
             )
 
             val status = when {

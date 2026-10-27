@@ -7,4 +7,12 @@
         <item name="android:textSize">13sp</item>
         <item name="android:textStyle">bold</item>
     </style>
+
+    <!-- 출결 앱 화면: 제목줄 없이, 위 상태 표시줄은 출결 앱 배경색 -->
+    <style name="AppScreen" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/app_bg</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/app_bg</item>
+        <item name="android:windowBackground">@color/app_bg</item>
+    </style>
 </resources>

@@ -1,6 +1,7 @@
 import { indexHolidays } from '../domain/calendar';
 import { rebuildDocs } from '../domain/rules';
 import { DEFAULT_SETTINGS, emptyState, type AppState, type Settings } from '../domain/types';
+import { androidApp, blobBase64 } from '../platform/android';
 
 // 모든 데이터는 이 브라우저의 IndexedDB 에만 저장한다. 외부 서버로 보내지 않는다.
 const DB_NAME = 'attendance-app';
@@ -84,6 +85,11 @@ export function exportBackup(state: AppState): void {
 }
 
 export function downloadBlob(blob: Blob, filename: string): void {
+  const app = androidApp();
+  if (app) {
+    void blobBase64(blob).then((b64) => app.saveFile(filename, blob.type || 'application/octet-stream', b64));
+    return;
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
