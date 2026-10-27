@@ -22,33 +22,28 @@
 
 ## 설치
 
-1. 휴대폰에서 이 저장소의 **Releases → 받을 서류 위젯** 에서 `attendance-widget.apk` 를 받습니다.
-2. 열어서 설치합니다. 처음이면 '출처를 알 수 없는 앱' 설치를 브라우저에 허용해야 합니다.
-   (구글 플레이에 올린 앱이 아니라서 Play 프로텍트 경고가 나올 수 있습니다.)
-3. **읽기 전용 토큰을 새로 만듭니다** — 출결 앱에 넣은 토큰을 같이 써도 되지만, 위젯 앱에는 읽기만 주는 게 안전합니다.
-   깃허브 → Settings → Developer settings → Fine-grained tokens → Generate new token
-   - Repository access: 동기화 저장소 하나만 (예: `YeoBBun/school-attendance-sync`)
-   - Permissions → Contents: **Read-only**
-4. '출결' 앱 아이콘을 **길게 눌러 → 위젯 설정**에서 동기화 저장소, 방금 만든 토큰, 출결 앱과 같은 잠금 비밀번호를 넣고 **저장하고 불러오기**.
-5. 홈 화면을 길게 눌러 위젯 → **받을 서류** 를 끌어다 놓습니다.
+1. 휴대폰에서 이 저장소의 **Releases → 받을 서류 위젯** 에서 `attendance-widget.apk` 를 받아 설치합니다.
+   처음이면 '출처를 알 수 없는 앱' 설치를 브라우저에 허용해야 하고, Play 프로텍트 경고가 나올 수 있습니다(플레이 스토어 앱이 아니라서).
+2. 초록색 **'출결'** 앱을 열고 **설정 → 휴대폰 ↔ PC 동기화** 에 저장소·토큰(Contents 읽기·쓰기)·잠금 비밀번호를 넣습니다.
+   기록이 받아지고, 위젯도 이 설정을 그대로 씁니다 (위젯용 토큰을 따로 만들 필요 없음).
+3. 홈 화면을 길게 눌러 위젯 → **받을 서류** 를 끌어다 놓습니다.
 
-> 처음에는 "아직 받을 서류 요약이 없어요" 가 나올 수 있습니다. 이 기능이 들어간 출결 앱을 휴대폰이나 PC 에서
-> 한 번 열면(동기화되면) 요약이 올라갑니다.
+위젯 상태는 '출결' 아이콘을 **길게 눌러 → 위젯 설정** 에서 봅니다.
 
 ## 새 버전으로 바꿀 때
 
-저장소 Secrets 에 서명 키를 넣어 두지 않았다면, 빌드할 때마다 서명 키가 달라서 **덮어 설치가 안 됩니다**.
-위젯 앱을 지우고 새로 설치한 뒤 연결 정보를 다시 넣으세요.
+저장소 Secrets 에 서명 키(`WIDGET_KEYSTORE_B64`, `WIDGET_KEYSTORE_PASSWORD`)가 있으면 늘 같은 키로 서명되어
+새 APK 를 그냥 덮어 설치하면 됩니다 (데이터·설정 그대로). Actions 의 '어떤 키로 서명했나' 단계에 어느 키였는지 나옵니다.
 
-덮어 설치되게 하려면 (한 번만):
+Secrets 가 없으면 빌드할 때마다 키가 달라 **덮어 설치가 안 되고**, 지우고 새로 깔아 동기화를 다시 연결해야 합니다.
+키를 새로 만들려면:
 
 ```bash
-keytool -genkeypair -keystore release.keystore -alias widget -keyalg RSA -keysize 2048 -validity 10000
-base64 -w0 release.keystore   # 이 출력을 복사
+keytool -genkeypair -keystore release.keystore -storetype PKCS12 -alias widget -keyalg RSA -keysize 2048 -validity 10000
+base64 -w0 release.keystore   # 이 출력이 WIDGET_KEYSTORE_B64, 키 비밀번호가 WIDGET_KEYSTORE_PASSWORD
 ```
 
-저장소 Settings → Secrets and variables → Actions 에 `WIDGET_KEYSTORE_B64`(위 출력), `WIDGET_KEYSTORE_PASSWORD`(키 비밀번호, 키와 저장소 비밀번호를 같게)를 넣고
-Actions → Android widget → Run workflow. 키 파일은 잃어버리지 않게 따로 보관합니다.
+키 파일은 잃어버리지 않게 따로 보관합니다.
 
 ## 보안
 

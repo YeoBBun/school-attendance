@@ -7,6 +7,8 @@ interface AndroidBridge {
   saveFile(name: string, mime: string, base64: string): void;
   /** 공유 창(구글 드라이브 등)으로 보낸다 */
   shareFile(name: string, mime: string, base64: string): void;
+  /** 위젯이 같은 동기화 설정으로 받을 서류를 받아 오게 넘긴다 (끄면 빈 문자열). 이전 버전 앱에는 없다 */
+  setSyncConfig?(json: string): void;
 }
 
 export function androidApp(): AndroidBridge | undefined {

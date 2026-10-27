@@ -10,44 +10,10 @@
         android:padding="20dp">
 
         <TextView
+            android:id="@+id/result"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/settings_intro"
-            android:textSize="14sp" />
-
-        <TextView style="@style/Label" android:text="@string/repo_label" />
-        <EditText
-            android:id="@+id/repo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/repo_hint"
-            android:importantForAutofill="no"
-            android:inputType="textUri" />
-
-        <TextView style="@style/Label" android:text="@string/token_label" />
-        <EditText
-            android:id="@+id/token"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="@string/token_hint"
-            android:importantForAutofill="no"
-            android:inputType="textPassword" />
-
-        <TextView style="@style/Label" android:text="@string/passphrase_label" />
-        <EditText
-            android:id="@+id/passphrase"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:importantForAutofill="no"
-            android:inputType="textPassword" />
-
-        <TextView style="@style/Label" android:text="@string/app_url_label" />
-        <EditText
-            android:id="@+id/appUrl"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:importantForAutofill="no"
-            android:inputType="textUri" />
+            android:textSize="15sp" />
 
         <Button
             android:id="@+id/save"
@@ -56,11 +22,12 @@
             android:layout_marginTop="16dp"
             android:text="@string/save" />
 
-        <TextView
-            android:id="@+id/result"
+        <TextView style="@style/Label" android:layout_marginTop="28dp" android:text="@string/app_url_label" />
+        <EditText
+            android:id="@+id/appUrl"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:textSize="14sp" />
+            android:importantForAutofill="no"
+            android:inputType="textUri" />
     </LinearLayout>
 </ScrollView>

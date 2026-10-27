@@ -15,6 +15,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.core.content.FileProvider
+import org.json.JSONObject
 import java.io.File
 
 /**
@@ -141,6 +142,22 @@ class WebAppActivity : Activity() {
                 .putExtra(Intent.EXTRA_STREAM, uri)
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             runOnUiThread { startActivity(Intent.createChooser(send, "나이스 입력 파일 보내기")) }
+        }
+
+        /** 출결 앱의 동기화 설정을 위젯도 쓴다. 바뀌었을 때만 받아 둔 것을 버리고 새로 받는다. */
+        @JavascriptInterface
+        fun setSyncConfig(json: String) {
+            val p = Prefs(this@WebAppActivity)
+            val (repo, token, pass) = if (json.isEmpty()) Triple("", "", "") else JSONObject(json).let {
+                Triple(it.optString("repo"), it.optString("token"), it.optString("passphrase"))
+            }
+            if (repo == p.repo && token == p.token && pass == p.passphrase) return
+            p.repo = repo
+            p.token = token
+            p.passphrase = pass
+            p.clearCache()
+            if (p.configured) Refresh.now(this@WebAppActivity)
+            PendingWidget.updateAll(this@WebAppActivity)
         }
     }
 

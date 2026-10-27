@@ -25,7 +25,7 @@ object Refresh {
      */
     fun run(ctx: Context): String? {
         val p = Prefs(ctx)
-        if (!p.configured) return "연결 정보를 넣어 주세요."
+        if (!p.configured) return "출결 앱에서 동기화를 연결해 주세요."
         val err = try {
             GitHub.fetchPending(p.repo.trim(), p.token.trim(), p.sha)?.let { file ->
                 val plain = Pending.decrypt(file.text, p.passphrase)

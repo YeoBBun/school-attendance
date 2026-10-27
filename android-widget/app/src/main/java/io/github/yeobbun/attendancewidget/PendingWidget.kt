@@ -67,13 +67,13 @@ class PendingWidget : AppWidgetProvider() {
 
             val status = when {
                 checking -> "확인 중…"
-                !p.configured -> "설정 필요"
+                !p.configured -> "동기화 연결 필요"
                 p.error != null -> "⚠ ${p.error}"
                 p.checkedAt > 0 -> DateFormat.format("H:mm", p.checkedAt).toString() + " 확인"
                 else -> ""
             }
             val empty = when {
-                !p.configured -> "눌러서 연결 정보를 넣어 주세요"
+                !p.configured -> "눌러서 출결 앱 설정 → 동기화를 연결해 주세요"
                 summary == null -> p.error ?: "불러오는 중…"
                 else -> "✓ 모두 받았어요"
             }
@@ -86,7 +86,7 @@ class PendingWidget : AppWidgetProvider() {
                 v.setOnClickPendingIntent(R.id.title, openApp)
                 v.setOnClickPendingIntent(R.id.status, openSettings)
                 v.setOnClickPendingIntent(R.id.refresh, refresh)
-                v.setOnClickPendingIntent(R.id.empty, if (p.configured) openApp else openSettings)
+                v.setOnClickPendingIntent(R.id.empty, openApp)
 
                 val svc = Intent(ctx, PendingListService::class.java)
                     .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)

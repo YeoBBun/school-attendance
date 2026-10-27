@@ -44,6 +44,11 @@ jobs:
           ./gradlew --no-daemon testDebugUnitTest assembleRelease
           cp app/build/outputs/apk/release/app-release.apk attendance-widget.apk
 
+      - name: 어떤 키로 서명했나
+        run: |
+          if [ -f release.keystore ]; then echo "서명: 고정 키 (덮어 설치 가능)"; else echo "::warning::서명: 디버그 키 — Secrets 에 WIDGET_KEYSTORE_B64·WIDGET_KEYSTORE_PASSWORD 가 없어 다음 버전은 지우고 다시 깔아야 해요"; fi
+          "$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner" verify --print-certs attendance-widget.apk | grep -i sha-256
+
       - uses: actions/upload-artifact@v4
         with:
           name: attendance-widget

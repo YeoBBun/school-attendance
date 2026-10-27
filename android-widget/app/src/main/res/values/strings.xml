@@ -4,14 +4,8 @@
     <string name="widget_name">받을 서류</string>
     <string name="widget_description">출결 앱에서 아직 받지 않은 서류</string>
     <string name="settings_title">받을 서류 위젯 설정</string>
-    <string name="settings_intro">위젯이 받을 서류를 받아 오는 데 쓰는 정보예요. 출결 앱 설정 → 휴대폰 ↔ PC 동기화에 넣은 것과 같은 저장소와 잠금 비밀번호를 넣으세요. 토큰은 읽기 전용으로 따로 만들어 쓰는 것을 권합니다.\n\n(출결 앱 화면은 이 앱 안에 따로 저장되므로, 출결 앱 안에서도 설정 → 동기화를 한 번 연결해야 기록이 보여요.)</string>
-    <string name="repo_label">동기화 저장소</string>
-    <string name="repo_hint">예: YeoBBun/school-attendance-sync</string>
-    <string name="token_label">깃허브 토큰</string>
-    <string name="token_hint">github_pat_…</string>
-    <string name="passphrase_label">잠금 비밀번호</string>
-    <string name="app_url_label">출결 앱 주소 (위젯을 누르면 열림)</string>
-    <string name="save">저장하고 불러오기</string>
+    <string name="app_url_label">출결 앱 주소 (바꿀 일이 거의 없어요)</string>
+    <string name="save">지금 불러오기</string>
     <string name="refresh">새로고침</string>
     <string name="shortcut_settings">위젯 설정</string>
 </resources>

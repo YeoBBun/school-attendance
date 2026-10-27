@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { indexHolidays, today, type HolidayIndex } from './domain/calendar';
 import { computeWarnings, type DocContext } from './domain/rules';
 import type { AppState, AttendanceRecord } from './domain/types';
+import { androidApp } from './platform/android';
 import { loadState, requestPersistence, saveState } from './storage/db';
 import { widgetSummary } from './domain/pending';
 import { loadSyncConfig, pushPending, syncNow } from './sync/cloud';
@@ -93,6 +94,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const runSync = useCallback(async () => {
     const cfg = loadSyncConfig();
+    // 휴대폰 '출결' 앱 안이면 위젯도 같은 설정을 쓰게 넘긴다 (바뀌었을 때만 앱이 반영)
+    androidApp()?.setSyncConfig?.(cfg ? JSON.stringify(cfg) : '');
     if (!cfg) return setSync({ kind: 'off' });
     if (syncing.current) {
       again.current = true;
