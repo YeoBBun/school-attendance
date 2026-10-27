@@ -71,4 +71,37 @@ class PendingTest {
             server.close()
         }
     }
+
+    @Test
+    fun `저장소 주소를 붙여 넣어도 이름만 남긴다`() {
+        assertEquals("me/sync", GitHub.normalizeRepo(" https://github.com/me/sync.git/ "))
+        assertEquals("me/sync", GitHub.normalizeRepo("me/sync"))
+    }
+
+    @Test
+    fun `요약이 없을 때와 저장소가 안 보일 때를 나눠 알린다`() {
+        fun serve(repoStatus: Int): String {
+            val server = ServerSocket(0, 0, InetAddress.getLoopbackAddress())
+            val thread = Thread {
+                repeat(2) {
+                    server.accept().use { sock ->
+                        val first = sock.getInputStream().bufferedReader().let { r ->
+                            generateSequence { r.readLine()?.takeIf { it.isNotEmpty() } }.toList()[0]
+                        }
+                        val status = if (first.startsWith("GET /repos/me/sync HTTP")) repoStatus else 404
+                        sock.getOutputStream().write("HTTP/1.1 $status X\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}".toByteArray())
+                    }
+                }
+            }.apply { start() }
+            try {
+                GitHub.api = "http://127.0.0.1:${server.localPort}"
+                return assertThrows(WidgetError::class.java) { GitHub.fetchPending("me/sync", "tok", null) }.message!!
+            } finally {
+                thread.join(5_000)
+                server.close()
+            }
+        }
+        assertTrue(serve(200).startsWith("아직 받을 서류 요약이 없어요"))
+        assertTrue(serve(404).startsWith("저장소를 찾지 못했어요"))
+    }
 }

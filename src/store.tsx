@@ -22,7 +22,11 @@ interface Store {
   sync: SyncStatus;
   /** 지금 바로 맞추기 (설정을 바꾼 뒤 등) */
   syncNow: () => void;
+  /** 휴대폰 위젯용 받을 서류 요약을 올린 결과 */
+  widgetSync: WidgetSyncStatus;
 }
+
+export type WidgetSyncStatus = { kind: 'none' } | { kind: 'ok'; at: string } | { kind: 'error'; message: string };
 
 export type SyncStatus =
   | { kind: 'off' }
@@ -85,6 +89,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [sync, setSync] = useState<SyncStatus>(() => (loadSyncConfig() ? { kind: 'syncing' } : { kind: 'off' }));
   const syncing = useRef(false);
   const again = useRef(false);
+  const [widgetSync, setWidgetSync] = useState<WidgetSyncStatus>({ kind: 'none' });
 
   const runSync = useCallback(async () => {
     const cfg = loadSyncConfig();
@@ -106,7 +111,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (stateRef.current !== base) again.current = true;
       setSync({ kind: 'ok', at: new Date().toISOString() });
       // 휴대폰 위젯용 요약 — 실패해도 출결 동기화는 된 것이라 다음 동기화 때 다시 올린다
-      pushPending(cfg, widgetSummary(merged, indexHolidays(merged.holidays))).catch((e) => console.warn('위젯 요약', e));
+      pushPending(cfg, widgetSummary(merged, indexHolidays(merged.holidays)))
+        .then(() => setWidgetSync({ kind: 'ok', at: new Date().toISOString() }))
+        .catch((e) => setWidgetSync({ kind: 'error', message: e instanceof Error ? e.message : String(e) }));
     } catch (e) {
       setSync((s) => ({ kind: 'error', message: e instanceof Error ? e.message : String(e), at: 'at' in s ? s.at : undefined }));
     } finally {
@@ -184,7 +191,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   if (!state) return <div className="fatal">불러오는 중…</div>;
 
   return (
-    <StoreContext.Provider value={{ state, update, replace, holidays, docContext, warnings, saveError, removeRecord, sync, syncNow: () => void runSync() }}>
+    <StoreContext.Provider value={{ state, update, replace, holidays, docContext, warnings, saveError, removeRecord, sync, syncNow: () => void runSync(), widgetSync }}>
       {children}
       {undo && (
         <div className="toast" role="status">

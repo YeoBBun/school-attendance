@@ -26,9 +26,11 @@ class MainActivity : Activity() {
         result.text = describe(p)
 
         save.setOnClickListener {
-            val changed = repo.text.toString().trim() != p.repo || token.text.toString().trim() != p.token ||
+            val newRepo = GitHub.normalizeRepo(repo.text.toString())
+            val changed = newRepo != p.repo || token.text.toString().trim() != p.token ||
                 pass.text.toString() != p.passphrase
-            p.repo = repo.text.toString().trim()
+            p.repo = newRepo
+            repo.setText(newRepo)
             p.token = token.text.toString().trim()
             p.passphrase = pass.text.toString()
             p.appUrl = url.text.toString().trim().ifEmpty { Prefs.DEFAULT_APP_URL }

@@ -95,18 +95,31 @@ object GitHub {
 
     class File(val sha: String, val text: String)
 
+    /** 'https://github.com/me/sync.git' 처럼 붙여 넣어도 'me/sync' 로 */
+    fun normalizeRepo(input: String): String =
+        input.trim().removePrefix("https://").removePrefix("http://").removePrefix("github.com/")
+            .trimEnd('/').removeSuffix(".git")
+
+    private fun open(path: String, token: String): HttpURLConnection =
+        (URL("$api$path").openConnection() as HttpURLConnection).apply {
+            connectTimeout = 15_000
+            readTimeout = 20_000
+            setRequestProperty("Authorization", "Bearer $token")
+            setRequestProperty("Accept", "application/vnd.github+json")
+            useCaches = false
+        }
+
     fun fetchPending(repo: String, token: String, knownSha: String?): File? {
-        val conn = URL("$api/repos/$repo/contents/${Pending.PATH}").openConnection() as HttpURLConnection
+        val conn = open("/repos/$repo/contents/${Pending.PATH}", token)
         try {
-            conn.connectTimeout = 15_000
-            conn.readTimeout = 20_000
-            conn.setRequestProperty("Authorization", "Bearer $token")
-            conn.setRequestProperty("Accept", "application/vnd.github+json")
-            conn.useCaches = false
             when (val code = conn.responseCode) {
                 200 -> {}
                 401 -> throw WidgetError("토큰이 맞지 않거나 만료됐어요.")
-                404 -> throw WidgetError("아직 받을 서류 요약이 없어요. 휴대폰이나 PC에서 출결 앱을 한 번 열어 주세요.")
+                // 깃허브는 토큰에 그 저장소 권한이 없어도 404 를 준다 → 저장소부터 보이는지 확인해서 나눠 알린다
+                404 -> throw WidgetError(
+                    if (repoVisible(repo, token)) "아직 받을 서류 요약이 없어요. 출결 앱을 새로고침해서 열고, 설정 → 동기화에 '위젯용 요약 올라가 있음' 이 뜨는지 봐 주세요."
+                    else "저장소를 찾지 못했어요. 저장소 이름이 출결 앱과 같은지, 토큰을 만들 때 그 저장소를 골랐는지 확인해 주세요.",
+                )
                 else -> throw WidgetError("깃허브 응답 오류 ($code)")
             }
             val o = JSONObject(conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) })
@@ -114,6 +127,15 @@ object GitHub {
             if (sha == knownSha) return null
             val text = Base64.getMimeDecoder().decode(o.getString("content")).toString(Charsets.UTF_8)
             return File(sha, text)
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    private fun repoVisible(repo: String, token: String): Boolean {
+        val conn = open("/repos/$repo", token)
+        return try {
+            conn.responseCode == 200
         } finally {
             conn.disconnect()
         }
