@@ -18,6 +18,10 @@ export interface SyncConfig {
 
 const CONFIG_KEY = 'neis-sync-config';
 const STATE_PATH = 'sync/state.json';
+/** 휴대폰 위젯이 읽는 받을 서류 요약 (같은 비밀번호로 잠근다) */
+const PENDING_PATH = 'sync/pending.json';
+/** 이 기기가 마지막으로 올린 요약 — 그대로면 다시 올리지 않는다 */
+const PENDING_SENT_KEY = 'widget-pending-sent';
 const ENC_FORMAT = 'attendance-app/state-enc-v1';
 const PBKDF2_ITER = 210_000;
 
@@ -49,6 +53,7 @@ export function saveSyncConfig(cfg: SyncConfig | null) {
   try {
     if (cfg) localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
     else localStorage.removeItem(CONFIG_KEY);
+    localStorage.removeItem(PENDING_SENT_KEY); // 저장소·비밀번호가 바뀌었을 수 있다
   } catch {
     /* 저장 공간을 못 쓰는 환경 */
   }
@@ -187,4 +192,34 @@ export async function syncNow(cfg: SyncConfig, local: AppState): Promise<AppStat
     if ((await push(cfg, merged, remote?.sha)) === 'ok') return canonical(merged) === canonical(local) ? local : merged;
   }
   throw new SyncError('다른 기기와 동시에 고치는 중이에요. 잠시 뒤 다시 맞춥니다.');
+}
+
+/**
+ * 휴대폰 위젯용 받을 서류 요약을 올린다. 이 기기가 지난번에 올린 것과 같으면 건너뛴다.
+ * 다른 기기가 같은 내용을 먼저 올렸어도 덮어쓸 뿐이라 해가 없다.
+ */
+export async function pushPending(cfg: SyncConfig, summary: unknown): Promise<void> {
+  const text = JSON.stringify(summary);
+  const sent = `${cfg.repo}\n${text}`;
+  try {
+    if (localStorage.getItem(PENDING_SENT_KEY) === sent) return;
+  } catch {
+    /* 저장 공간을 못 쓰면 매번 올린다 */
+  }
+  const content = btoa(JSON.stringify(await encrypt(summary, cfg.passphrase)));
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const cur = await gh(cfg, 'GET', `/contents/${PENDING_PATH}`);
+    if (!cur.ok && cur.status !== 404) throw new SyncError(`위젯 요약을 확인하지 못했어요 (깃허브 ${cur.status})`);
+    const sha = cur.ok ? ((await cur.json()) as { sha: string }).sha : undefined;
+    const r = await gh(cfg, 'PUT', `/contents/${PENDING_PATH}`, { message: '위젯 요약', content, ...(sha ? { sha } : {}) });
+    if (r.ok) {
+      try {
+        localStorage.setItem(PENDING_SENT_KEY, sent);
+      } catch {
+        /* 다음에 다시 올린다 */
+      }
+      return;
+    }
+    if (r.status !== 409 && r.status !== 422) throw new SyncError(`위젯 요약을 올리지 못했어요 (깃허브 ${r.status})`);
+  }
 }

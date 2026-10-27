@@ -3,7 +3,8 @@ import { indexHolidays, today, type HolidayIndex } from './domain/calendar';
 import { computeWarnings, type DocContext } from './domain/rules';
 import type { AppState, AttendanceRecord } from './domain/types';
 import { loadState, requestPersistence, saveState } from './storage/db';
-import { loadSyncConfig, syncNow } from './sync/cloud';
+import { widgetSummary } from './domain/pending';
+import { loadSyncConfig, pushPending, syncNow } from './sync/cloud';
 import { mergeStates, stamp } from './sync/merge';
 
 interface Store {
@@ -104,6 +105,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       if (stateRef.current !== base) again.current = true;
       setSync({ kind: 'ok', at: new Date().toISOString() });
+      // 휴대폰 위젯용 요약 — 실패해도 출결 동기화는 된 것이라 다음 동기화 때 다시 올린다
+      pushPending(cfg, widgetSummary(merged, indexHolidays(merged.holidays))).catch((e) => console.warn('위젯 요약', e));
     } catch (e) {
       setSync((s) => ({ kind: 'error', message: e instanceof Error ? e.message : String(e), at: 'at' in s ? s.at : undefined }));
     } finally {

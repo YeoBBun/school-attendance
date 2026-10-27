@@ -9,6 +9,9 @@ export type Status = (typeof STATUSES)[number];
 export const KINDS = ['출석인정', '질병', '미인정', '기타'] as const;
 export type Kind = (typeof KINDS)[number];
 
+/** 목록에 쓰는 짧은 표기 */
+export const KIND_SHORT: Record<Kind, string> = { 출석인정: '인정', 질병: '질병', 미인정: '미인정', 기타: '기타' };
+
 /** 출석인정 세부 사유 */
 export const APPROVED_REASONS = ['법정감염병', '체험학습', '경조사', '생리', '공문'] as const;
 export type ApprovedReason = (typeof APPROVED_REASONS)[number];

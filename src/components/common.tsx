@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import type { AttendanceRecord, Kind, Status, Student } from '../domain/types';
+import { KIND_SHORT, type AttendanceRecord, type Kind, type Status, type Student } from '../domain/types';
 import { Icon } from './icons';
 import { countSchoolDays, formatKo, type HolidayIndex } from '../domain/calendar';
 import { periodNote } from '../domain/neis';
@@ -36,7 +36,7 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
   );
 }
 
-export const KIND_SHORT: Record<Kind, string> = { 출석인정: '인정', 질병: '질병', 미인정: '미인정', 기타: '기타' };
+export { KIND_SHORT };
 
 export function kindClass(kind: Kind): string {
   return { 출석인정: 'k-approved', 질병: 'k-ill', 미인정: 'k-unexcused', 기타: 'k-etc' }[kind];

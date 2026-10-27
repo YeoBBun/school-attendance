@@ -1,15 +1,7 @@
 import { useMemo, useState } from 'react';
 import { addDays, formatKo, isWeekend, today } from '../domain/calendar';
-import {
-  applicationDeadline,
-  computeWarnings,
-  statusOn,
-  DOC_FT_APPLICATION,
-  DOC_FT_REPORT,
-  missingDocs,
-  rebuildDocs,
-  reportDeadline,
-} from '../domain/rules';
+import { pendingDocs, shortTitle, studentName, type PendingRow } from '../domain/pending';
+import { computeWarnings, statusOn, DOC_FT_REPORT, rebuildDocs } from '../domain/rules';
 import {
   APPROVED_REASONS,
   KINDS,
@@ -17,7 +9,6 @@ import {
   type ApprovedReason,
   type AttendanceRecord,
   FAMILY_EVENTS,
-  type DocItem,
   type FamilyEvent,
   type Kind,
   type Status,
@@ -489,18 +480,6 @@ function Choice<T extends string>({
   );
 }
 
-/** 서류 목록용 짧은 표기. 예: 질병결석, 생리 조퇴, 체험학습 */
-function shortTitle(r: AttendanceRecord): string {
-  if (r.kind !== '출석인정' || !r.reason) return `${KIND_SHORT[r.kind]}${r.status}`;
-  return r.reason === '체험학습' ? '체험학습' : `${r.reason} ${r.status}`;
-}
-
-interface PendingRow {
-  record: AttendanceRecord;
-  doc: DocItem;
-  deadline?: string;
-}
-
 /** 아직 받지 않은 필수 서류. 기한 지난 것을 위로. */
 function PendingDocs() {
   const { state, update, holidays } = useStore();
@@ -508,18 +487,9 @@ function PendingDocs() {
   const now = today();
 
   const rows = useMemo(() => {
-    const out: PendingRow[] = [];
-    for (const record of state.records) {
-      for (const doc of missingDocs(record)) {
-        let deadline: string | undefined;
-        if (doc.key === DOC_FT_APPLICATION) deadline = applicationDeadline(record, state.settings, holidays);
-        if (doc.key === DOC_FT_REPORT) deadline = reportDeadline(record, state.settings, holidays);
-        out.push({ record, doc, deadline });
-      }
-    }
     const overdue = (r: PendingRow) => (r.deadline && r.deadline < now ? 0 : 1);
-    return out.sort((a, b) => overdue(a) - overdue(b) || a.record.startDate.localeCompare(b.record.startDate));
-  }, [state.records, state.settings, holidays, now]);
+    return pendingDocs(state, holidays).sort((a, b) => overdue(a) - overdue(b));
+  }, [state, holidays, now]);
 
   const receive = (recordId: string, key: string) =>
     update((s) => ({
@@ -528,11 +498,6 @@ function PendingDocs() {
         r.id === recordId ? { ...r, docs: r.docs.map((d) => (d.key === key ? { ...d, received: true, receivedDate: now } : d)) } : r,
       ),
     }));
-
-  const nameOf = (id: string) => {
-    const s = state.students.find((x) => x.id === id);
-    return s ? `${s.number}. ${s.name}` : '?';
-  };
 
   return (
     <section className="card">
@@ -549,7 +514,7 @@ function PendingDocs() {
           {rows.map(({ record, doc, deadline }) => (
             <li key={record.id + doc.key} className={deadline && deadline < now ? 'over' : ''}>
               <button className="link who" onClick={() => setEditing(record)}>
-                {nameOf(record.studentId)}
+                {studentName(state, record.studentId)}
               </button>
               <span className="what">
                 <b>{doc.label}</b>

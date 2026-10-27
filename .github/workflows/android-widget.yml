@@ -1,0 +1,63 @@
+name: Android widget
+
+# 휴대폰 '받을 서류' 위젯 앱(android-widget/)을 빌드한다.
+# main 에 올라가거나 직접 실행하면 Releases 의 'widget-latest' 에 APK 를 올린다.
+on:
+  push:
+    paths:
+      - 'android-widget/**'
+      - '.github/workflows/android-widget.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-widget-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android-widget
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: 서명 키 (Secrets 에 있으면)
+        env:
+          KEYSTORE_B64: ${{ secrets.WIDGET_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then echo "$KEYSTORE_B64" | base64 -d > release.keystore; fi
+
+      - name: 시험하고 빌드
+        env:
+          WIDGET_KEYSTORE_PASSWORD: ${{ secrets.WIDGET_KEYSTORE_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon testDebugUnitTest assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk attendance-widget.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: attendance-widget
+          path: android-widget/attendance-widget.apk
+
+      - name: Releases 에 올리기
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view widget-latest >/dev/null 2>&1; then
+            gh release upload widget-latest attendance-widget.apk --clobber
+          else
+            gh release create widget-latest attendance-widget.apk --prerelease \
+              --title "받을 서류 위젯 (안드로이드)" \
+              --notes "휴대폰에서 attendance-widget.apk 를 받아 설치하세요. 설치 방법은 android-widget/README.md 참고."
+          fi
